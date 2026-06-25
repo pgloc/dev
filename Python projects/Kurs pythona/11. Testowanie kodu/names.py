@@ -10,4 +10,4 @@ while True:
         break
 
     formatted_name = get_formatted_name(first, last)
-    print(f"Elegancko sformatowane pełne imię i nzawisko: {formatted_name}.")
+    print(f"Elegancko sformatowane pełne imię i nazwisko: {formatted_name}.")
