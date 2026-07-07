@@ -21,7 +21,7 @@ class SpaceShipBullet(Sprite):
     def update(self):
         """Poruszanie pociskiem po ekranie."""
         # Uaktualnienie położenia pocisku.
-        self.x += 1.0
+        self.x += 1.5
         # Uaktualnienie położenia prostokąta pocisku.
         self.rect.x = self.x
 
