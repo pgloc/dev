@@ -9,10 +9,11 @@ class SpaceShipBullet(Sprite):
         """Utworzenie obiektu pocisku w aktualnym położeniu statku."""
         super().__init__()
         self.screen = ai_game.screen
-        self.color = (60, 60, 60)
+        self.settings = ai_game.settings
+        self.color = self.settings.bullet_color
 
         # Utworzenie prostokąta pocisku w punkcie (0, 0), a następnie zdefiniowanie dla niego odpowiedniego położenia.
-        self.rect = pygame.Rect(0, 0, 15, 3)
+        self.rect = pygame.Rect(0, 0, self.settings.bullet_width, self.settings.bullet_height)
         self.rect.midleft = ai_game.space_ship.rect.midright
 
         # Położenie pocisku jest zdefiniowane za pomocą wartości zmiennoprzecinkowej.
@@ -21,7 +22,7 @@ class SpaceShipBullet(Sprite):
     def update(self):
         """Poruszanie pociskiem po ekranie."""
         # Uaktualnienie położenia pocisku.
-        self.x += 1.5
+        self.x += self.settings.bullet_speed
         # Uaktualnienie położenia prostokąta pocisku.
         self.rect.x = self.x
 

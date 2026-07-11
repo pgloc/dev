@@ -9,6 +9,7 @@ class Ufo(Sprite):
         """Inicjalizacja obcego i zdefiniowanie jego położenia początkowego."""
         super().__init__()
         self.screen = ai_game.screen
+        self.settings = ai_game.settings
 
         # Wczytanie obrazu obcego i zdefiniowanie jego atrybutu rect.
         self.image = pygame.image.load('images/ufo.png')
@@ -29,5 +30,5 @@ class Ufo(Sprite):
         
     def update(self):
         """Przesunięcie obcego w prawo."""
-        self.x -= 0.5
+        self.x -= self.settings.alien_speed
         self.rect.x = self.x

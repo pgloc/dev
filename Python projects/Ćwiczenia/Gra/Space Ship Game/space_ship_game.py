@@ -1,6 +1,9 @@
 import sys
+from time import sleep
 import pygame
 
+from space_ship_settings import Settings
+from space_ship_stats import GameStats
 from space_ship import SpaceShip
 from space_ship_bullet import SpaceShipBullet
 from space_ship_ufo import Ufo
@@ -11,15 +14,18 @@ class SpaceShipGame:
     def __init__(self):
         """Inicjalizacja gry i utworzenie jej zasobów."""
         pygame.init()
-
-        self.screen = pygame.display.set_mode((1200, 800))
+        
+        self.settings = Settings()
+        self.screen = pygame.display.set_mode((self.settings.screen_width, self.settings.screen_height))
         self.screen_rect = self.screen.get_rect()
-        self.bg_color = (230, 230, 230)
         # Fullscreen.
         #self.screen = pygame.display.set_mode((0, 0), pygame.FULLSCREEN)
         #self.settings.screen_width = self.screen.get_rect().width
         #self.settings.screen_height = self.screen.get_rect().height
         pygame.display.set_caption("Statek kosmiczny")
+
+        # Utworzenie egzemplarza przechowującego dane statystyczne dotyczące gry.
+        self.space_ship_stats = GameStats(self)
 
         self.space_ship = SpaceShip(self)
         self.space_ship_bullets = pygame.sprite.Group()
@@ -31,9 +37,12 @@ class SpaceShipGame:
         """Rozpoczęcie pętli głównej gry."""
         while True:
             self._check_events()
-            self.space_ship.update()
-            self._update_bullets()
-            self._update_ufos()
+
+            if self.space_ship_stats.game_active:
+                self.space_ship.update()
+                self._update_bullets()
+                self._update_ufos()
+
             self._update_screen()
             
             # Wyświetlenie ostatnio zmodyfikowanego ekranu.
@@ -96,11 +105,15 @@ class SpaceShipGame:
             if ufo.check_edges():
                 self.space_ship_ufos.remove(ufo)
         self.space_ship_ufos.update()
+
+        # Wykrywanie kolizji między obcym i statkiem.
+        if pygame.sprite.spritecollideany(self.space_ship, self.space_ship_ufos):
+            self._ship_hit()
     
     def _create_fleet(self):
         """Utworzenie pełnej floty obcych."""
         # Utworzenie pełnej floty obcych.
-        for ufo_number in range(5):
+        for ufo_number in range(self.settings.alien_limit):
             self._create_ufo(ufo_number)
             
     def _create_ufo(self, ufo_number):
@@ -108,9 +121,29 @@ class SpaceShipGame:
         ufo = Ufo(self)
         self.space_ship_ufos.add(ufo)
 
+    def _ship_hit(self):
+        """Reakcja na uderzenie obcego w statek."""
+        if self.space_ship_stats.ships_left > 0:
+            # Zmniejszenie wartości przechowywanej w ships_left.
+            self.space_ship_stats.ships_left -= 1
+
+            # Usunięcie zawartości list aliens i bullets.
+            self.space_ship_ufos.empty()
+            self.space_ship_bullets.empty()
+
+            # Utworzenie nowej floty i wyśrodkowanie statku.
+            self._create_fleet()
+            self.space_ship.center_ship()
+
+            # Pauza.
+            sleep(0.5)
+
+        else:
+            self.space_ship_stats.game_active = False
+
     def _update_screen(self):
         """Uaktualnienie obrazów na ekranie i przejście do nowego ekranu."""
-        self.screen.fill(self.bg_color)
+        self.screen.fill(self.settings.bg_color)
         self.space_ship.blitme()
         for bullet in self.space_ship_bullets.sprites():
             bullet.draw_bullet()

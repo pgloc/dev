@@ -6,6 +6,7 @@ class SpaceShip:
     def __init__(self, ai_game):
         """Inicjalizacja statku i jego położenia początkowego."""
         self.screen = ai_game.screen
+        self.settings = ai_game.settings
         self.screen_rect = ai_game.screen.get_rect()
 
         # Wczytanie obrazu statku i pobranie jego prostokąta.
@@ -25,9 +26,9 @@ class SpaceShip:
     def update(self):
         """Uaktualnienie położenia statku na podstawie opcji wskazującej na jego ruch."""
         if self.moving_up and self.rect.top > 0:
-            self.y -= 1.5
+            self.y -= self.settings.ship_speed
         if self.moving_down and self.rect.bottom < self.screen_rect.bottom:
-            self.y += 1.5
+            self.y += self.settings.ship_speed 
 
         # Uaktualnienie obiektu rect na podstawie wartości self.y.
         self.rect.y = self.y
@@ -35,3 +36,8 @@ class SpaceShip:
     def blitme(self):
         """Wyświetlenie statku w jego aktualnym położeniu."""
         self.screen.blit(self.image, self.rect)
+
+    def center_ship(self):
+        """Umieszczenie statku na środku przy lewej krawędzi ekranu."""
+        self.rect.midleft = self.screen_rect.midleft
+        self.y = float(self.rect.y)
