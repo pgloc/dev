@@ -1,12 +1,12 @@
 class GameStats:
-    """Monitorowanie danych statystycznych w grze 'Inwazja obcych'."""
+    """Monitorowanie danych statystycznych w grze."""
 
     def __init__(self, ai_game):
         """Inicjalizacja danych statystycznych."""
         self.settings = ai_game.settings
         self.reset_stats()
 
-        # Uruchomienie gry 'Inwazja obcych' w stanie aktywnym.
+        # Uruchomienie gry w stanie nieaktywnym..
         self.game_active = False
 
     def reset_stats(self):
