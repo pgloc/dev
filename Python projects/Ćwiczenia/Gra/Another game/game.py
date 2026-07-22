@@ -67,6 +67,8 @@ class Game:
         """Rozpoczęcie nowej gry po kliknięciu przycisku Gra przez użytkownika."""
         button_clicked = self.play_button.rect.collidepoint(mouse_pos)
         if button_clicked and not self.stats.game_active:
+            # Wyzerowanie ustawień dotyczących gry.
+            self.settings.initialize_dynamic_settings()
             self._start_game()
 
     def _check_keydown_events(self, event):
@@ -126,6 +128,7 @@ class Game:
         if pygame.sprite.spritecollideany(self.target, self.bullets):
             self.bullets.empty()
             sleep(0.5)
+            self.settings.increase_speed()
 
     def _update_target(self):
         """Uaktualnienie położenia celu."""

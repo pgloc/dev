@@ -4,9 +4,11 @@ import pygame
 
 from space_ship_settings import Settings
 from space_ship_stats import GameStats
+from space_ship_scoreboard import Scoreboard
 from space_ship import SpaceShip
 from space_ship_bullet import SpaceShipBullet
 from space_ship_ufo import Ufo
+from space_ship_button import Button
 
 class SpaceShipGame:
     """Ogólna klasa przeznaczona do zarządzania zasobami i sposobem działania gry."""
@@ -26,12 +28,16 @@ class SpaceShipGame:
 
         # Utworzenie egzemplarza przechowującego dane statystyczne dotyczące gry.
         self.space_ship_stats = GameStats(self)
+        self.sb = Scoreboard(self)
 
         self.space_ship = SpaceShip(self)
         self.space_ship_bullets = pygame.sprite.Group()
         self.space_ship_ufos = pygame.sprite.Group()
 
         self._create_fleet()
+        
+        # Utworzenie przycisku Gra.
+        self.play_button = Button(self, "Gra")
 
     def run_game(self):
         """Rozpoczęcie pętli głównej gry."""
@@ -57,6 +63,9 @@ class SpaceShipGame:
                 self._check_keydown_events(event)
             elif event.type == pygame.KEYUP:
                 self._check_keyup_events(event)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                self._check_play_button(mouse_pos)
 
     def _check_keydown_events(self, event):
         """Reakcja na naciśnięcie klawisza."""
@@ -76,6 +85,32 @@ class SpaceShipGame:
         elif event.key == pygame.K_DOWN:
             self.space_ship.moving_down = False
 
+    def _check_play_button(self, mouse_pos):
+        """Rozpoczęcie nowej gry po kliknięciu przycisku Gra przez użytkownika."""
+        button_clicked = self.play_button.rect.collidepoint(mouse_pos)
+        if button_clicked and not self.space_ship_stats.game_active:
+            # Wyzerowanie ustawień dotyczących gry.
+            self._start_game()
+
+    def _start_game(self):
+        """Rozpoczęcie nowej gry."""
+        # Wyzerowanie danych statystycznych gry.
+        self.settings.initialize_dynamic_settings()
+        self.space_ship_stats.reset_stats()
+        self.space_ship_stats.game_active = True
+        self.sb.prep_images()
+
+        # Usunięcie zawartości list aliens i bullets.
+        self.space_ship_ufos.empty()
+        self.space_ship_bullets.empty()
+
+        # Utworzenie nowej floty i wyśrodkowanie statku.
+        self._create_fleet()
+        self.space_ship.center_ship()
+
+        # Ukrycie kursora myszy.
+        pygame.mouse.set_visible(False)
+
     def _fire_bullet(self):
         """Utworzenie nowego pocisku i dodanie go do grupy pocisków."""
         if len(self.space_ship_bullets) < 3:
@@ -94,10 +129,21 @@ class SpaceShipGame:
                 
         collisions = pygame.sprite.groupcollide(self.space_ship_bullets, self.space_ship_ufos, True, True)
 
+        if collisions:
+            for ufos in collisions.values():
+                self.space_ship_stats.score += self.settings.alien_points * len(ufos)
+            self.sb.prep_score()
+            self.sb.check_high_score()
+
         if not self.space_ship_ufos:
             # Pozbycie się istniejących pocisków i utworzenie nowej floty.
             self.space_ship_bullets.empty()
             self._create_fleet()
+            self.settings.increase_speed()
+            
+            # Inkrementacja numeru poziomu.
+            self.space_ship_stats.level += 1
+            self.sb.prep_level()
 
     def _update_ufos(self):
         """Sprawdzenie, czy flota obcych znajduje się przy krawędzi, a następnie uaktualnienie położenia wszystkich obcych we flocie."""
@@ -126,6 +172,7 @@ class SpaceShipGame:
         if self.space_ship_stats.ships_left > 0:
             # Zmniejszenie wartości przechowywanej w ships_left.
             self.space_ship_stats.ships_left -= 1
+            self.sb.prep_ships()
 
             # Usunięcie zawartości list aliens i bullets.
             self.space_ship_ufos.empty()
@@ -140,6 +187,7 @@ class SpaceShipGame:
 
         else:
             self.space_ship_stats.game_active = False
+            pygame.mouse.set_visible(True)
 
     def _update_screen(self):
         """Uaktualnienie obrazów na ekranie i przejście do nowego ekranu."""
@@ -148,6 +196,13 @@ class SpaceShipGame:
         for bullet in self.space_ship_bullets.sprites():
             bullet.draw_bullet()
         self.space_ship_ufos.draw(self.screen)
+
+        # Wyświetlenie przycisku tylko wtedy, gdy gra jest nieaktywna.
+        if not self.space_ship_stats.game_active:
+            self.play_button.draw_button()
+
+        # Wyświetlenie informacji o punktacji.
+        self.sb.show_score()
 
         # Wyświetlenie ostatnio zmodyfikowanego ekranu.
         pygame.display.flip()

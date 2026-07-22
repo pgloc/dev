@@ -1,12 +1,16 @@
 import sys
 from time import sleep
 import pygame
+import pygame.mixer
+import random
 
 from settings import Settings
 from game_stats import GameStats
+from scoreboard import Scoreboard
 from ship import Ship
 from alien import Alien
 from bullet import Bullet
+from alien_bullet import AlienBullet
 from button import Button
 
 class AlienInvasion:
@@ -24,17 +28,29 @@ class AlienInvasion:
         #self.settings.screen_height = self.screen.get_rect().height
         pygame.display.set_caption("Inwazja obcych")
 
-        # Utworzenie egzemplarza przechowującego dane statystyczne dotyczące gry.
+        # Utworzenie egzemplarza przechowującego dane statystyczne dotyczące gry oraz utworzenie egzemplarza klasy Scoreboard.
         self.stats = GameStats(self)
+        self.sb = Scoreboard(self)
 
         self.ship = Ship(self)
         self.bullets = pygame.sprite.Group()
         self.aliens = pygame.sprite.Group()
+        self.alien_bullets = pygame.sprite.Group()
 
         self._create_fleet()
 
         # Utworzenie przycisku Gra.
         self.play_button = Button(self, "Gra")
+
+        # Utworzenie przycisków dotyczących poziomu trudności.
+        self.easy_button = Button(self, "Łatwy")
+        self.medium_button = Button(self, "Średni")
+        self.hard_button = Button(self, "Trudny")
+
+        # Zaczytanie muzyki w tle.
+        pygame.mixer.music.load("sounds/background.mp3")
+        pygame.mixer.music.set_volume(0.2)
+        pygame.mixer.music.play(-1)
 
     def run_game(self):
         """Rozpoczęcie pętli głównej gry."""
@@ -45,6 +61,13 @@ class AlienInvasion:
                 self.ship.update()
                 self._update_bullets()
                 self._update_aliens()
+                self._update_alien_bullet()
+
+                current_time = pygame.time.get_ticks()
+
+                if current_time - self.settings.last_alien_shot > self.settings.alien_shot_delay:
+                    self._alien_fire()
+                    self.settings.last_alien_shot = current_time
                 
             self._update_screen()
             
@@ -62,13 +85,49 @@ class AlienInvasion:
                 self._check_keyup_events(event)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = pygame.mouse.get_pos()
+                self._check_mode_buttons(mouse_pos)
                 self._check_play_button(mouse_pos)
 
     def _check_play_button(self, mouse_pos):
         """Rozpoczęcie nowej gry po kliknięciu przycisku Gra przez użytkownika."""
         button_clicked = self.play_button.rect.collidepoint(mouse_pos)
-        if button_clicked and not self.stats.game_active:
-            self._start_game()
+        if button_clicked and not self.stats.game_active and not self.stats.play_clicked:
+            # Wyzerowanie ustawień dotyczących gry.
+            self._mode_buttons_show()
+
+    def _check_mode_buttons(self, mouse_pos):
+        """Rozpoczęcie nowej gry po wybraniu poziomu trudności przez użytkownika."""
+        easy_clicked = self.easy_button.rect.collidepoint(mouse_pos)
+        medium_clicked = self.medium_button.rect.collidepoint(mouse_pos)
+        hard_clicked = self.hard_button.rect.collidepoint(mouse_pos)
+
+        if not self.stats.game_active and self.stats.play_clicked:
+            if easy_clicked:
+                self._start_game()
+            if medium_clicked:
+                self._set_medium_mode()
+                self._start_game()
+            if hard_clicked:
+                self._set_hard_mode()
+                self._start_game()
+
+    def _set_medium_mode(self):
+        """Średni poziom trudności."""
+        self.settings.alien_speed = 0.5
+        self.settings.bullet_speed = 1.5
+        self.settings.ship_speed = 1.5
+        self.settings.alien_points = 100
+        self.settings.alien_bullet_speed = 0.5
+        self.settings.alien_shot_delay = 800
+
+    def _set_hard_mode(self):
+        """Trudny poziom trudności."""
+        self.settings.alien_speed = 1
+        self.settings.bullet_speed = 2
+        self.settings.ship_speed = 2
+        self.settings.alien_points = 200
+        self.settings.alien_bullet_speed = 1
+        self.settings.alien_shot_delay = 500
 
     def _check_keydown_events(self, event):
         """Reakcja na naciśnięcie klawisza."""
@@ -77,11 +136,24 @@ class AlienInvasion:
         elif event.key == pygame.K_LEFT:
             self.ship.moving_left = True
         elif event.key == pygame.K_q:
+            with open(self.stats.save_score, 'w') as file_object:
+                file_object.write(str(self.stats.high_score))
             sys.exit()
         elif event.key == pygame.K_SPACE:
             self._fire_bullet()
         elif event.key == pygame.K_g:
-            self._start_game()
+            self.stats.game_active = False
+            pygame.mouse.set_visible(True)
+            self._mode_buttons_show()
+
+    def _mode_buttons_show(self):
+        """Pokazanie i pozycjonowanie przycisków dotyczących poziomu trudności."""
+        self.settings.initialize_dynamic_settings()
+        self.stats.play_clicked = True
+        self.easy_button.rect.y = self.medium_button.rect.y - self.medium_button.height * 2
+        self.easy_button.msg_image_rect.center = self.easy_button.rect.center
+        self.hard_button.rect.y = self.medium_button.rect.y + self.medium_button.height * 2
+        self.hard_button.msg_image_rect.center = self.hard_button.rect.center
 
     def _check_keyup_events(self, event):
         """Reakcja na zwolnienie klawisza."""
@@ -95,6 +167,7 @@ class AlienInvasion:
         # Wyzerowanie danych statystycznych gry.
         self.stats.reset_stats()
         self.stats.game_active = True
+        self.sb.prep_images()
 
         # Usunięcie zawartości list aliens i bullets.
         self.aliens.empty()
@@ -107,11 +180,23 @@ class AlienInvasion:
         # Ukrycie kursora myszy.
         pygame.mouse.set_visible(False)
 
+    def _start_new_level(self):
+        """Rozpoczęcie nowego poziomu."""
+        # Pozbycie się istniejących pocisków i utworzenie nowej floty.
+        self.bullets.empty()
+        self._create_fleet()
+        self.settings.increase_speed()
+
+        # Inkrementacja numeru poziomu.
+        self.stats.level += 1
+        self.sb.prep_level()
+
     def _fire_bullet(self):
         """Utworzenie nowego pocisku i dodanie go do grupy pocisków."""
         if len(self.bullets) < self.settings.bullets_allowed:
             new_bullet = Bullet(self)
             self.bullets.add(new_bullet)
+            self.settings.shoot_sound.play()
 
     def _update_bullets(self):
         """Uaktualnienie położenia pocisków i usunięcie tych niewidocznych na ekranie."""
@@ -130,10 +215,15 @@ class AlienInvasion:
         # Usunięcie wszystkich pocisków i obcych, między którymi doszło do kolizji.
         collisions = pygame.sprite.groupcollide(self.bullets, self.aliens, True, True)
 
+        if collisions:
+            for aliens in collisions.values():
+                self.stats.score += self.settings.alien_points * len(aliens)
+            self.sb.prep_score()
+            self.sb.check_high_score()
+            self.settings.explosion_sound.play()
+
         if not self.aliens:
-            # Pozbycie się istniejących pocisków i utworzenie nowej floty.
-            self.bullets.empty()
-            self._create_fleet()
+            self._start_new_level()
 
     def _update_aliens(self):
         """Sprawdzenie, czy flota obcych znajduje się przy krawędzi, a następnie uaktualnienie położenia wszystkich obcych we flocie."""
@@ -197,25 +287,59 @@ class AlienInvasion:
                 self._ship_hit()
                 break
 
+    def _alien_fire(self):
+        """Utworzenie nowego pocisku i dodanie go do grupy pocisków."""
+        if len(self.aliens) == 0:
+            return
+
+        # Losowy wybór istniejącego obcego.
+        alien = random.choice(self.aliens.sprites())
+
+        bullet = AlienBullet(self, alien)
+        self.alien_bullets.add(bullet)
+
+    def _update_alien_bullet(self):
+        """Uaktualnienie położenia pocisków i usunięcie tych niewidocznych na ekranie."""
+        # Uaktualnienie położenia pocisków.
+        self.alien_bullets.update()
+
+        # Usunięcie pocisków, które znajdują się poza ekranem.
+        for alien_bullet in self.alien_bullets.copy():
+            if alien_bullet.rect.top >= self.screen.get_rect().height:
+                self.alien_bullets.remove(alien_bullet)
+
+        self._check_alien_bullet_ship_collision()
+
+    def _check_alien_bullet_ship_collision(self):
+        """Sprawdzenie, czy jakiś pocisk obcego trafił statek."""
+        # Wykrywanie kolizji między pociskiem i statkiem.
+        if pygame.sprite.spritecollideany(self.ship, self.alien_bullets):
+            self._ship_hit()
+
     def _ship_hit(self):
         """Reakcja na uderzenie obcego w statek."""
         if self.stats.ships_left > 0:
-            # Zmniejszenie wartości przechowywanej w ships_left.
+            # Zmniejszenie wartości przechowywanej w ships_left i uaktualnienie tablicy wyników.
             self.stats.ships_left -= 1
+            self.sb.prep_ships()
 
             # Usunięcie zawartości list aliens i bullets.
             self.aliens.empty()
             self.bullets.empty()
+            self.alien_bullets.empty()
 
             # Utworzenie nowej floty i wyśrodkowanie statku.
             self._create_fleet()
             self.ship.center_ship()
+
+            self.settings.explosion_sound.play()
 
             # Pauza.
             sleep(0.5)
 
         else:
             self.stats.game_active = False
+            self.stats.play_clicked = False
             pygame.mouse.set_visible(True)
 
     def _update_screen(self):
@@ -226,9 +350,20 @@ class AlienInvasion:
             bullet.draw_bullet()
         self.aliens.draw(self.screen)
 
+        for alien_bullet in self.alien_bullets.sprites():
+            alien_bullet.draw_bullet()
+
+        # Wyświetlenie informacji o punktacji.
+        self.sb.show_score()
+
         # Wyświetlenie przycisku tylko wtedy, gdy gra jest nieaktywna.
         if not self.stats.game_active:
-            self.play_button.draw_button()
+            if not self.stats.play_clicked:
+                self.play_button.draw_button()
+            else:
+                self.easy_button.draw_button()
+                self.medium_button.draw_button()
+                self.hard_button.draw_button()
 
         # Wyświetlenie ostatnio zmodyfikowanego ekranu.
         pygame.display.flip()
