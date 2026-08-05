@@ -1,2 +1,14 @@
 {
+    "python-envs.pythonProjects": [
+        {
+            "path": "Wizualizacja danych",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        },
+        {
+            "path": "Alien Invasion",
+            "envManager": "ms-python.python:venv",
+            "packageManager": "ms-python.python:pip"
+        }
+    ]
 }
