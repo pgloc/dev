@@ -1,6 +1,16 @@
 <p>
   <a href="{% url 'blogs:index' %}">Blog</a> -
-  <a href="{% url 'blogs:posts' %}">Posty</a>
+  <a href="{% url 'blogs:posts' %}">Posty</a> -
+  {% if user.is_authenticated %}
+    Witaj, {{ user.username }}.
+    <form method="post" action="{% url 'users:logout' %}">
+      {% csrf_token %}
+      <button type="submit">Wyloguj</button>
+    </form>
+  {% else %}
+    <a href="{% url 'users:register' %}">Rejestruj</a> -
+    <a href="{% url 'users:login' %}">Zaloguj</a>
+  {% endif %}
 </p>
 
 {% block content %}{% endblock content %}
