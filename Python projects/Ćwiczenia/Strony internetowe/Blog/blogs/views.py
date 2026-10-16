@@ -1,4 +1,6 @@
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponseRedirect, Http404
 
 from .models import BlogPost
 from .forms import PostForm
@@ -13,6 +15,7 @@ def posts(request):
     context = {'posts': posts}
     return render(request, 'blogs/posts.html', context)
 
+@login_required
 def new_post(request):
     """Dodaj nowy post."""
     if request.method != 'POST':
@@ -22,16 +25,20 @@ def new_post(request):
         # Przekazano dane za pomocą żądania POST, należy je przetworzyć.
         form = PostForm(data=request.POST)
         if form.is_valid():
-            form.save()
+            new_post = form.save(commit=False)
+            new_post.owner = request.user
+            new_post.save()
             return redirect('blogs:posts')
 
     # Wyświetlenie pustego formularza.
     context = {'form': form}
     return render(request, 'blogs/new_post.html', context)
 
+@login_required
 def edit_post(request, post_id):
     """Edycja istniejącego postu."""
     post = BlogPost.objects.get(id=post_id)
+    check_topic_owner(request, post)
 
     if request.method != 'POST':
         # Nie przekazano żadnych danych, należy utworzyć pusty formularz.
@@ -39,9 +46,14 @@ def edit_post(request, post_id):
     else:
         # Przekazano dane za pomocą żądania POST, należy je przetworzyć.
         form = PostForm(instance=post, data=request.POST)
-        if form.is_valid():
+        if form.is_valid() and post.owner == request.user:
             form.save()
             return redirect('blogs:posts')
 
     context = {'post': post, 'form': form}
     return render(request, 'blogs/edit_post.html', context)
+
+def check_topic_owner(request, post):
+    """Upewniamy się, że temat należy do bieżącego użytkownika."""
+    if post.owner != request.user:
+        raise Http404

@@ -9,9 +9,11 @@
       <li>
         <p>{{ post.title }} | {{ post.date_added|date:'d M Y H:i' }}</p>
         <p>{{ post.text|linebreaks }}</p>
-        <p>
-          <a href="{% url 'blogs:edit_post' post.id %}">Edytuj post</a>
-        </p>
+        {% if post.owner == user %}
+          <p>
+            <a href="{% url 'blogs:edit_post' post.id %}">Edytuj post</a>
+          </p>
+        {% endif %}
       </li>
     {% empty %}
       <li>Nie został dodany jeszcze żaden post.</li>
