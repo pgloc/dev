@@ -17,4 +17,8 @@ urlpatterns = [
     path('new_entry/<int:topic_id>)/', views.new_entry, name='new_entry'),
     # Strona przeznaczona do edycji wpisu.
     path('edit_entry/<int:entry_id>/', views.edit_entry, name='edit_entry'),
+    # Strona przeznaczona do usuwania wpisu.
+    path('delete_entry/<int:entry_id>/', views.delete_entry, name='delete_entry'),
+    # Strona przeznaczona do usuwania tematu.
+    path('delete_topic/<int:topic_id>/', views.delete_topic, name='delete_topic'),
 ]

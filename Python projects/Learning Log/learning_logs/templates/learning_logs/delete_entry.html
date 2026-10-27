@@ -1,0 +1,18 @@
+{% extends "learning_logs/base.html" %}
+
+{% block page_header %}
+  <h2>Usuń wpis</h2>
+{% endblock page_header %}
+
+{% block content %}
+  <p>Czy na pewno chcesz usunąć ten wpis?</p>
+
+  <div>{{ entry.text|linebreaks }}</div>
+
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-danger">Usuń wpis</button>
+    <a href="{% url 'learning_logs:topic' topic.id %}" class="btn btn-secondary">Anuluj</a>
+  </form>
+  
+{% endblock content %}

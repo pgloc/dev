@@ -1,5 +1,16 @@
 {% extends "blogs/base.html" %}
 
-{% block content %}
-  <p>Blog umożliwia użytkownikowi rejestrowanie osobistych wpisów w formie pamiętnika.</p>
-{% endblock content %}
+{% block page_header %}
+  <div class="jumbotron">
+    <h1 class="display-3">Prowadź osobisty blog</h1>
+
+    <p class="lead">Załóż konto, aby rozpocząć korzystanie z aplikacji Blog oraz wyświetlić listę postów. Gdy
+      przeżyłeś coś ekscytującego w swoim życiu, utwórz na ten temat post.</p>
+    
+    {% if user.is_authenticated %}
+      <a class="btn btn-lg btn-dark" href="{% url 'blogs:posts' %}" role="button">Posty &raquo;</a>
+    {% else %}
+      <a class="btn btn-lg btn-dark" href="{% url 'users:register' %}" role="button">Zarejestruj konto &raquo;</a>
+    {% endif %}
+  </div>
+{% endblock page_header %}

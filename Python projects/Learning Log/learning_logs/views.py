@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect, Http404
 
@@ -46,6 +46,21 @@ def new_topic(request):
     return render(request, 'learning_logs/new_topic.html', context)
 
 @login_required
+def delete_topic(request, topic_id):
+    """Usuwanie istniejącego tematu."""
+    topic = Topic.objects.get(id=topic_id)
+
+    # Sprawdzenie, czy użytkownik jest właścicielem tematu.
+    check_topic_owner(request, topic)
+
+    if request.method == 'POST':
+        topic.delete()
+        return redirect('learning_logs:topics')
+
+    context = {'topic': topic}
+    return render(request, 'learning_logs/delete_topic.html', context)
+
+@login_required
 def new_entry(request, topic_id):
     """Dodanie nowego wpisu dla określonego tematu."""
     topic = Topic.objects.get(id=topic_id)
@@ -70,8 +85,10 @@ def new_entry(request, topic_id):
 @login_required
 def edit_entry(request, entry_id):
     """Edycja istniejącego wpisu."""
-    entry = Entry.objects.get(id=entry_id)
+    entry = get_object_or_404(Entry, id=entry_id)
     topic = entry.topic
+    
+    # Sprawdzenie, czy użytkownik jest właścicielem tematu.
     check_topic_owner(request, topic)
 
     if request.method != 'POST':
@@ -86,6 +103,23 @@ def edit_entry(request, entry_id):
 
     context = {'entry': entry, 'topic': topic, 'form': form}
     return render(request, 'learning_logs/edit_entry.html', context)
+
+@login_required
+def delete_entry(request, entry_id):
+    """Usuwanie istniejącego wpisu."""
+    entry = get_object_or_404(Entry, id=entry_id)
+    topic = entry.topic
+
+    # Sprawdzenie, czy użytkownik jest właścicielem tematu.
+    check_topic_owner(request, topic)
+
+    if request.method == 'POST':
+        entry.delete()
+        return redirect('learning_logs:topic', topic_id=topic.id)
+
+    context = {'entry': entry, 'topic': topic}
+    return render(request, 'learning_logs/delete_entry.html', context)
+
 
 def check_topic_owner(request, topic):
     """Upewniamy się, że temat należy do bieżącego użytkownika."""

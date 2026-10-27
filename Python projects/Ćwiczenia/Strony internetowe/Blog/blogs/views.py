@@ -53,6 +53,21 @@ def edit_post(request, post_id):
     context = {'post': post, 'form': form}
     return render(request, 'blogs/edit_post.html', context)
 
+@login_required
+def delete_post(request, post_id):
+    """Usuwanie istniejącego postu."""
+    post = BlogPost.objects.get(id=post_id)
+
+    # Sprawdzenie, czy użytkownik jest właścicielem postu.
+    check_topic_owner(request, post)
+
+    if request.method == 'POST':
+        post.delete()
+        return redirect('blogs:posts')
+
+    context = {'post': post}
+    return render(request, 'blogs/delete_post.html', context)
+
 def check_topic_owner(request, post):
     """Upewniamy się, że temat należy do bieżącego użytkownika."""
     if post.owner != request.user:
